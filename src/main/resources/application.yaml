@@ -1,3 +1,16 @@
+server:
+  port: 8082
+
 spring:
-  application:
-    name: order-microservice
+  datasource:
+    url: jdbc:postgresql://localhost:5432/order
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    properties:
+      hibernate:
+        ddl-auto: none
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  liquibase:
+    enabled: true
