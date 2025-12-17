@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  # Базы данных
+  order:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: order
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+
+  user:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: user
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+
+  product:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: product
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+
+  # Микросервисы
+  user-service:
+    build: ./user-service
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://user-db:5432/user
+    depends_on:
+      - user
+
+  product-service:
+    build: ./product-service
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://product-db:5432/product
+    depends_on:
+      - product
+
+  order-service:
+    build: ./order-service
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://order-db:5432/order
+      SERVICE_USER_URL: http://user-service:8081
+      SERVICE_PRODUCT_URL: http://product-service:8082/api
+    depends_on:
+      - order
+      - user-service
+      - product-service

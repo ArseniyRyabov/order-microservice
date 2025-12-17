@@ -1,0 +1,16 @@
+package com.github.arseniyryabov.order.repository;
+
+import com.github.arseniyryabov.order.entity.OrderEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+public interface OrderRepository extends JpaRepository<OrderEntity, UUID> {
+
+    Optional<OrderEntity> findByOrderId(UUID orderId);
+    Optional<OrderEntity> findByOrderIdAndUserId(UUID orderId, Long userId);
+    List<OrderEntity> findByUserId(Long userId);
+    List<OrderEntity> findByStatus(String status);
+}
