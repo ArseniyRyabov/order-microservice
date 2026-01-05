@@ -10,7 +10,7 @@ public class OrderServiceConfig {
     @Bean
     public RestClient userServiceRestClient() {
         return RestClient.builder()
-                .baseUrl("http://user-service:8080")
+                .baseUrl("http://localhost:8080")
                 .defaultHeader("Content-Type", "application/json")
                 .defaultHeader("Accept", "application/json")
                 .build();
@@ -19,7 +19,7 @@ public class OrderServiceConfig {
     @Bean
     public RestClient productServiceRestClient() {
         return RestClient.builder()
-                .baseUrl("http://product-service:8081/api")
+                .baseUrl("http://localhost:8081")
                 .defaultHeader("Content-Type", "application/json")
                 .defaultHeader("Accept", "application/json")
                 .build();

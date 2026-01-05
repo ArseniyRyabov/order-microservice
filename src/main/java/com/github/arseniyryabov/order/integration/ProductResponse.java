@@ -1,4 +1,4 @@
-package com.github.arseniyryabov.order.integrations;
+package com.github.arseniyryabov.order.integration;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -16,6 +16,7 @@ public class ProductResponse {
     private String name;
     private BigDecimal price;
     private String description;
+    private Integer stockQuantity;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

@@ -2,6 +2,7 @@ package com.github.arseniyryabov.order.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.GenericGenerator;
 
 import java.util.UUID;
 
@@ -12,9 +13,11 @@ import java.util.UUID;
 public class OrderItemEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    private UUID id;
-
+    @GeneratedValue(generator = "UUID")
+    @GenericGenerator(
+            name = "UUID",
+            strategy = "org.hibernate.id.UUIDGenerator"
+    )
     @Column(name = "order_item_id", nullable = false, unique = true)
     private UUID orderItemId;
 

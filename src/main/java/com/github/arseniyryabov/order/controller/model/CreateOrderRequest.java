@@ -1,10 +1,7 @@
 package com.github.arseniyryabov.order.controller.model;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -34,7 +31,8 @@ public class CreateOrderRequest {
         @NotNull(message = "ID продукта обязателен")
         private UUID productId;
 
-        @NotNull(message = "Количество обязательно")
+        @NotNull(message = "Количество товара обязательно")
+        @Min(value = 1, message = "Количество должно быть не менее 1")
         private Integer quantity;
     }
 }

@@ -17,4 +17,4 @@ service:
   user:
     url: http://localhost:8080
   product:
-    url: http://localhost:8081/api
+    url: http://localhost:8081

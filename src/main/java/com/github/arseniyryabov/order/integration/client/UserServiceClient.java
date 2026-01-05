@@ -1,6 +1,7 @@
-package com.github.arseniyryabov.order.integrations.client;
+package com.github.arseniyryabov.order.integration.client;
 
-import com.github.arseniyryabov.order.integrations.UserResponse;
+import com.github.arseniyryabov.order.exception.UserNotFoundException;
+import com.github.arseniyryabov.order.integration.UserResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
@@ -11,22 +12,22 @@ import org.springframework.web.client.RestClient;
 public class UserServiceClient {
 
     private final RestClient userServiceRestClient;
-    private static final String GET_USER_BY_ID_URL = "/users/{id}";
 
-    public UserResponse getUserById(Long userId) {
+    public void getUserById(Long userId) {
         try {
-            return userServiceRestClient.get()
-                    .uri(GET_USER_BY_ID_URL, userId)
+            userServiceRestClient.get()
+                    .uri("/users/{id}", userId)
                     .retrieve()
                     .body(UserResponse.class);
         } catch (HttpClientErrorException.NotFound e) {
-            throw new RuntimeException("Пользователь с ID " + userId + " не найден");
+            throw new UserNotFoundException(userId);
         } catch (Exception e) {
             throw new RuntimeException("Ошибка при получении пользователя: " + e.getMessage(), e);
         }
     }
 
-    public boolean validateUserExists(Long userId) {
+    // Проверка пользователя
+    public boolean isUserExists(Long userId) {
         try {
             userServiceRestClient.get()
                     .uri("/users/{id}", userId)

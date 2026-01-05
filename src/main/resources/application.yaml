@@ -1,11 +1,15 @@
 server:
   port: 8082
+  error:
+    include-message: always
+    include-binding-errors: always
+    include-stacktrace: on_param
 
 service:
   user:
     url: http://localhost:8080
   product:
-    url: http://localhost:8081/api
+    url: http://localhost:8081
 
 spring:
   datasource:
@@ -18,5 +22,7 @@ spring:
       hibernate:
         ddl-auto: none
         dialect: org.hibernate.dialect.PostgreSQLDialect
+        id:
+          uuid_generator_strategy: org.hibernate.id.uuid4.StandardRandomStrategy
   liquibase:
     enabled: true

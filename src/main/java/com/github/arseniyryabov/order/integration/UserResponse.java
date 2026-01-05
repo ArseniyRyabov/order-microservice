@@ -1,4 +1,4 @@
-package com.github.arseniyryabov.order.integrations;
+package com.github.arseniyryabov.order.integration;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
