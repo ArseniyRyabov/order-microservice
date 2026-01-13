@@ -4,8 +4,8 @@ import com.github.arseniyryabov.order.controller.model.CreateOrderRequest;
 import com.github.arseniyryabov.order.entity.OrderEntity;
 import com.github.arseniyryabov.order.exception.InsufficientStockException;
 import com.github.arseniyryabov.order.exception.ProductNotFoundException;
-import com.github.arseniyryabov.order.exception.ProductUnavailableException;
 import com.github.arseniyryabov.order.entity.OrderItemEntity;
+import com.github.arseniyryabov.order.exception.UserNotFoundException;
 import com.github.arseniyryabov.order.integration.ProductResponse;
 
 import com.github.arseniyryabov.order.integration.client.ProductServiceClient;
@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 // Сервис для работы с заказами
 @Service
 @RequiredArgsConstructor
-public class OrderService {
+public class  OrderService {
 
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
@@ -79,8 +79,12 @@ public class OrderService {
 
     // Получение конкретного заказа пользователя
     public OrderEntity getOrderById(UUID orderId, Long userId) {
-        // Проверка существования пользователя (если не найден, будет 404)
-        userServiceClient.getUserById(userId);
+        // Проверка существования пользователя
+        try {
+            userServiceClient.getUserById(userId);
+        } catch (UserNotFoundException e) {
+            throw e;  // Пробрасывается исключение дальше для обработки в @RestControllerAdvice
+        }
 
         return orderRepository.findByOrderIdAndUserId(orderId, userId)
                 .orElseThrow(() -> new RuntimeException("Заказ не найден"));
@@ -111,52 +115,42 @@ public class OrderService {
         userServiceClient.getUserById(userId);
     }
 
-    // Проверка наличия всех товаров в заказе
+    /* Проверка наличия всех товаров в заказе
+    Проверка наличия товара через product-service
+    Получение информации о товаре для детализации ошибки*/
     private void validateProductsAvailability(List<CreateOrderRequest.OrderItemRequest> items) {
         for (CreateOrderRequest.OrderItemRequest itemRequest : items) {
             UUID productId = itemRequest.getProductId();
             Integer requestedQuantity = itemRequest.getQuantity();
 
-            // Проверяем наличие товара через product-service
-            boolean isAvailable = productServiceClient.isProductAvailable(productId, requestedQuantity);
-
-            if (!isAvailable) {
-
-                // Получение информации о товаре для детализации ошибки
-                ProductResponse product = productServiceClient.getProductById(productId);
-                if (product == null) {
-                    throw new ProductNotFoundException(productId);
-                }
-
-                if (product.getStockQuantity() == 0) {
-                    throw new ProductUnavailableException(productId);
-                } else {
+            try {
+                // Проверяем доступность товара
+                boolean isAvailable = productServiceClient.isProductAvailable(productId, requestedQuantity);
+                if (!isAvailable) {
+                    // Если товар существует, но недостаточно на складе
+                    ProductResponse product = productServiceClient.getProductById(productId);
                     throw new InsufficientStockException(
                             productId,
                             product.getStockQuantity(),
                             requestedQuantity
                     );
                 }
+            } catch (ProductNotFoundException e) {
+                // Если товар не найден, пробрасываем исключение дальше
+                throw e;
             }
         }
     }
 
     // Расчет общей суммы заказа
     private BigDecimal calculateTotalAmount(List<CreateOrderRequest.OrderItemRequest> items) {
-        BigDecimal totalAmount = BigDecimal.ZERO;
-
-        for (CreateOrderRequest.OrderItemRequest itemRequest : items) {
-            ProductResponse product = productServiceClient.getProductById(itemRequest.getProductId());
-
-            if (product == null) {
-                throw new ProductNotFoundException(itemRequest.getProductId());
-            }
-
-            BigDecimal itemPrice = product.getPrice().multiply(BigDecimal.valueOf(itemRequest.getQuantity()));
-            totalAmount = totalAmount.add(itemPrice);
-        }
-
-        return totalAmount;
+        return items.stream()
+                .map(itemRequest -> {
+                    // Если товар не найден, getProductById выбросит ProductNotFoundException
+                    ProductResponse product = productServiceClient.getProductById(itemRequest.getProductId());
+                    return product.getPrice().multiply(BigDecimal.valueOf(itemRequest.getQuantity()));
+                })
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     // Создание элементов заказа
@@ -173,38 +167,36 @@ public class OrderService {
                 .collect(Collectors.toList());
     }
 
-    // Уменьшение количества товаров на складе
+    /* Уменьшение количества товаров на складе
+    catch: Если не удалось уменьшить количество, отменяем весь заказ */
     private void decreaseProductsStock(List<CreateOrderRequest.OrderItemRequest> items) {
-        for (CreateOrderRequest.OrderItemRequest itemRequest : items) {
+        items.forEach(itemRequest -> {
             try {
                 productServiceClient.decreaseProductStock(
                         itemRequest.getProductId(),
                         itemRequest.getQuantity()
                 );
             } catch (Exception e) {
-                // Если не удалось уменьшить количество, отменяем весь заказ
                 throw new RuntimeException("Не удалось обновить количество товара на складе: " + e.getMessage());
             }
-        }
+        });
     }
 
-    // Возврат товаров на склад при отмене заказа
+    /* Возврат товаров на склад при отмене заказа
+    try: Логирование, временная реализация
+    - Для продакта добавить endpoint в ProductService.
+    - productServiceClient.increaseProductStock(item.getProductId(), item.getQuantity());
+    catch: Логирование ошибки, но отмена заказа не прерывается */
     private void returnProductsToStock(OrderEntity order) {
-        List<OrderItemEntity> items = order.getItems();
-
-        for (OrderItemEntity item : items) {
-            try {
-                // Для продакта добавить endpoint в ProductService
-                // productServiceClient.increaseProductStock(item.getProductId(), item.getQuantity());
-
-                // Логирование, временная реализация
-                System.out.println("Возврат товара на склад: " +
-                        item.getProductId() + ", количество: " + item.getQuantity());
-            } catch (Exception e) {
-                // Логирование ошибки, но отмена заказа не прерывается
-                System.err.println("Ошибка при возврате товара на складе: " + e.getMessage());
-            }
-        }
+        order.getItems()
+                .forEach(item -> {
+                    try {
+                        System.out.println("Возврат товара на склад: " +
+                                item.getProductId() + ", количество: " + item.getQuantity());
+                    } catch (Exception e) {
+                        System.err.println("Ошибка при возврате товара на складе: " + e.getMessage());
+                    }
+                });
     }
 
     // Класс со статусами заказа

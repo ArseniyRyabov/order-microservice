@@ -20,13 +20,15 @@ public class UserServiceClient {
                     .retrieve()
                     .body(UserResponse.class);
         } catch (HttpClientErrorException.NotFound e) {
+            // Теперь это исключение автоматически преобразуется в UserNotFoundException в сервисе User
+            // и возвращает статус 404
             throw new UserNotFoundException(userId);
         } catch (Exception e) {
             throw new RuntimeException("Ошибка при получении пользователя: " + e.getMessage(), e);
         }
     }
 
-    // Проверка пользователя
+    // Метод для проверки пользователя
     public boolean isUserExists(Long userId) {
         try {
             userServiceRestClient.get()

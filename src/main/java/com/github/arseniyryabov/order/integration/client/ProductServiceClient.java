@@ -1,5 +1,6 @@
 package com.github.arseniyryabov.order.integration.client;
 
+import com.github.arseniyryabov.order.exception.ProductNotFoundException;
 import com.github.arseniyryabov.order.integration.ProductResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.ParameterizedTypeReference;
@@ -27,9 +28,24 @@ public class ProductServiceClient {
                     .retrieve()
                     .body(ProductResponse.class);
         } catch (HttpClientErrorException.NotFound e) {
-            return null;
+            // Сервис Product вернул 404, преобразуем в ProductNotFoundException
+            throw new ProductNotFoundException(productId);
         } catch (Exception e) {
             throw new RuntimeException("Ошибка при получении продукта: " + e.getMessage());
+        }
+    }
+
+    // Проверка доступности товара
+    public boolean isProductAvailable(UUID productId, Integer quantity) {
+        try {
+            ProductResponse product = getProductById(productId);
+            // Если getProductById выбросил ProductNotFoundException, то это не выполняется
+            return product.getStockQuantity() >= quantity;
+        } catch (ProductNotFoundException e) {
+            // ProductNotFoundException пробрасывается дальше
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("Ошибка при проверке наличия товара: " + e.getMessage());
         }
     }
 
@@ -65,19 +81,6 @@ public class ProductServiceClient {
             return false;
         } catch (Exception e) {
             throw new RuntimeException("Ошибка при проверке товара: " + e.getMessage(), e);
-        }
-    }
-
-    // Проверка наличия товара
-    public boolean isProductAvailable(UUID productId, Integer quantity) {
-        try {
-            ProductResponse product = getProductById(productId);
-            if (product == null) {
-                return false;
-            }
-            return product.getStockQuantity() >= quantity;
-        } catch (Exception e) {
-            throw new RuntimeException("Ошибка при проверке наличия товара: " + e.getMessage());
         }
     }
 
