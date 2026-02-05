@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -31,25 +32,15 @@ public class OrderController {
     // Метод для проверки подключения к user-service
     @GetMapping("/health/check-user-service")
     public ResponseEntity<String> checkUserServiceConnection() {
-        try {
-            boolean isAlive = userServiceClient.isUserExists(2L);
-            return ResponseEntity.ok("User service is available. Connection successful.");
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                    .body("User service is unavailable: " + e.getMessage());
-        }
+        boolean isAlive = userServiceClient.isUserExists(2L);
+        return ResponseEntity.ok("User service is available. Connection successful.");
     }
 
     // Метод для проверки подключения к product-service
     @GetMapping("/health/check-product-service")
     public ResponseEntity<String> checkProductServiceConnection() {
-        try {
-            boolean isAlive = productServiceClient.isProductExists(UUID.fromString("be87a6c6-aeef-463e-bb62-1b563f16db46"));
-            return ResponseEntity.ok("User service is available. Connection successful.");
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                    .body("Product service is unavailable: " + e.getMessage());
-        }
+        boolean isAlive = productServiceClient.isProductExists(UUID.fromString("be87a6c6-aeef-463e-bb62-1b563f16db46"));
+        return ResponseEntity.ok("User service is available. Connection successful.");
     }
 
     // Создание заказа (POST /orders)
@@ -81,24 +72,9 @@ public class OrderController {
         return mapToResponse(order);
     }
 
-    // Обновление статуса заказа (PATCH /orders/{id}/status)
-    @PatchMapping("/{orderId}/status")
-    public OrderResponse updateOrderStatus(
-            @PathVariable UUID orderId,
-            @RequestParam String status) {
-        OrderEntity order = orderService.updateOrderStatus(orderId, status);
-        return mapToResponse(order);
-    }
 
-    // Получение заказов по статусу (GET /orders/status/{status})
-    @GetMapping("/status/{status}")
-    public List<OrderResponse> getOrdersByStatus(
-            @PathVariable String status) {
-        List<OrderEntity> orders = orderService.getOrdersByStatus(status);
-        return orders.stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
-    }
+
+
 
     // Преобразование OrderEntity в OrderResponse (DTO)
     private OrderResponse mapToResponse(OrderEntity order) {
@@ -107,7 +83,8 @@ public class OrderController {
         response.setUserId(order.getUserId());
         response.setAddress(order.getAddress());
         response.setDeliveryMethod(order.getDeliveryMethod());
-        response.setStatus(order.getStatus());
+        //!!!String.valueOf
+        response.setStatus(String.valueOf(order.getStatus()));
         response.setTotalAmount(order.getTotalAmount());
         response.setCreatedAt(order.getCreatedAt());
 
@@ -126,5 +103,30 @@ public class OrderController {
         }
 
         return response;
+    }
+
+    // Новый endpoint для получения всех возможных статусов
+    @GetMapping("/statuses")
+    public Map<String, String> getAllOrderStatuses() {
+        return orderService.getAllStatuses();
+    }
+
+    // Обновление статуса заказа
+    @PatchMapping("/{orderId}/status")
+    public OrderResponse updateOrderStatus(
+            @PathVariable UUID orderId,
+            @RequestParam String status) {
+        OrderEntity order = orderService.updateOrderStatus(orderId, status);
+        return mapToResponse(order);
+    }
+
+    // Получение заказов по статусу
+    @GetMapping("/status/{status}")
+    public List<OrderResponse> getOrdersByStatus(
+            @PathVariable String status) {
+        List<OrderEntity> orders = orderService.getOrdersByStatus(status);
+        return orders.stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
     }
 }

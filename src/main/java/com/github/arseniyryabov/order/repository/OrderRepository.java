@@ -1,6 +1,7 @@
 package com.github.arseniyryabov.order.repository;
 
 import com.github.arseniyryabov.order.entity.OrderEntity;
+import com.github.arseniyryabov.order.enums.OrderStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -12,5 +13,5 @@ public interface OrderRepository extends JpaRepository<OrderEntity, UUID> {
     Optional<OrderEntity> findByOrderId(UUID orderId);
     Optional<OrderEntity> findByOrderIdAndUserId(UUID orderId, Long userId);
     List<OrderEntity> findByUserId(Long userId);
-    List<OrderEntity> findByStatus(String status);
+    List<OrderEntity> findByStatus(OrderStatus status);
 }

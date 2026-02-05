@@ -30,8 +30,6 @@ public class ProductServiceClient {
         } catch (HttpClientErrorException.NotFound e) {
             // Сервис Product вернул 404, преобразуем в ProductNotFoundException
             throw new ProductNotFoundException(productId);
-        } catch (Exception e) {
-            throw new RuntimeException("Ошибка при получении продукта: " + e.getMessage());
         }
     }
 
@@ -44,8 +42,6 @@ public class ProductServiceClient {
         } catch (ProductNotFoundException e) {
             // ProductNotFoundException пробрасывается дальше
             throw e;
-        } catch (Exception e) {
-            throw new RuntimeException("Ошибка при проверке наличия товара: " + e.getMessage());
         }
     }
 
@@ -79,8 +75,6 @@ public class ProductServiceClient {
             return true;
         } catch (HttpClientErrorException.NotFound e) {
             return false;
-        } catch (Exception e) {
-            throw new RuntimeException("Ошибка при проверке товара: " + e.getMessage(), e);
         }
     }
 

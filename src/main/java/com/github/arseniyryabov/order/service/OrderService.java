@@ -2,6 +2,7 @@ package com.github.arseniyryabov.order.service;
 
 import com.github.arseniyryabov.order.controller.model.CreateOrderRequest;
 import com.github.arseniyryabov.order.entity.OrderEntity;
+import com.github.arseniyryabov.order.enums.OrderStatus;
 import com.github.arseniyryabov.order.exception.InsufficientStockException;
 import com.github.arseniyryabov.order.exception.ProductNotFoundException;
 import com.github.arseniyryabov.order.entity.OrderItemEntity;
@@ -18,7 +19,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -90,24 +93,67 @@ public class  OrderService {
                 .orElseThrow(() -> new RuntimeException("Заказ не найден"));
     }
 
-    // Обновление статуса заказа
+    // Обновление статуса заказа с использованием enum
     @Transactional
-    public OrderEntity updateOrderStatus(UUID orderId, String status) {
+    public OrderEntity updateOrderStatus(UUID orderId, String statusString) {
         OrderEntity order = orderRepository.findByOrderId(orderId)
                 .orElseThrow(() -> new RuntimeException("Заказ не найден"));
 
+        // Конвертируем строку в enum
+        OrderStatus newStatus;
+        try {
+            newStatus = OrderStatus.fromCode(statusString);
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Неверный статус заказа: " + statusString);
+        }
+
         // Если заказ отменен, то товары вернутся на склад
-        if (OrderStatus.CANCELLED.equals(status) && !OrderStatus.CANCELLED.equals(order.getStatus())) {
+        if (newStatus == OrderStatus.CANCELLED && order.getStatus() != OrderStatus.CANCELLED) {
             returnProductsToStock(order);
         }
 
-        order.setStatus(status);
+        // Проверяем, возможен ли переход к новому статусу
+        validateStatusTransition(order.getStatus(), newStatus);
+
+        order.setStatus(newStatus);
         return orderRepository.save(order);
     }
 
-    // Получение заказов по статусу
-    public List<OrderEntity> getOrdersByStatus(String status) {
+    // Валидация перехода статусов
+    private void validateStatusTransition(OrderStatus currentStatus, OrderStatus newStatus) {
+        // Пример простой валидации
+        if (currentStatus.isFinal()) {
+            throw new IllegalStateException(
+                    "Заказ в статусе " + currentStatus + " не может быть изменен"
+            );
+        }
+
+        if (!newStatus.canBeCancelled() && newStatus == OrderStatus.CANCELLED) {
+            throw new IllegalStateException(
+                    "Заказ в статусе " + currentStatus + " не может быть отменен"
+            );
+        }
+    }
+
+    // Получение заказов по статусу с использованием enum
+    public List<OrderEntity> getOrdersByStatus(String statusString) {
+        OrderStatus status;
+        try {
+            status = OrderStatus.fromCode(statusString);
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Неверный статус заказа: " + statusString);
+        }
+
         return orderRepository.findByStatus(status);
+    }
+
+    // Метод для получения всех возможных статусов
+    public Map<String, String> getAllStatuses() {
+        return Arrays.stream(OrderStatus.values())
+                .collect(Collectors.toMap(
+                        OrderStatus::getCode,
+                        OrderStatus::getDescription
+                ));
     }
 
     // Проверка существования пользователя с выбрасыванием исключения
@@ -171,14 +217,10 @@ public class  OrderService {
     catch: Если не удалось уменьшить количество, отменяем весь заказ */
     private void decreaseProductsStock(List<CreateOrderRequest.OrderItemRequest> items) {
         items.forEach(itemRequest -> {
-            try {
-                productServiceClient.decreaseProductStock(
-                        itemRequest.getProductId(),
-                        itemRequest.getQuantity()
-                );
-            } catch (Exception e) {
-                throw new RuntimeException("Не удалось обновить количество товара на складе: " + e.getMessage());
-            }
+            productServiceClient.decreaseProductStock(
+                    itemRequest.getProductId(),
+                    itemRequest.getQuantity()
+            );
         });
     }
 
@@ -190,22 +232,8 @@ public class  OrderService {
     private void returnProductsToStock(OrderEntity order) {
         order.getItems()
                 .forEach(item -> {
-                    try {
-                        System.out.println("Возврат товара на склад: " +
-                                item.getProductId() + ", количество: " + item.getQuantity());
-                    } catch (Exception e) {
-                        System.err.println("Ошибка при возврате товара на складе: " + e.getMessage());
-                    }
+                    System.out.println("Возврат товара на склад: " +
+                            item.getProductId() + ", количество: " + item.getQuantity());
                 });
-    }
-
-    // Класс со статусами заказа
-    public static class OrderStatus {
-        public static final String CREATED = "CREATED";      // Создан
-        public static final String PROCESSING = "PROCESSING"; // В обработке
-        public static final String SHIPPED = "SHIPPED";      // Отправлен
-        public static final String DELIVERED = "DELIVERED";   // Доставлен
-        public static final String CANCELLED = "CANCELLED";   // Отменен
-        public static final String PENDING = "PENDING";       // В ожидании
     }
 }

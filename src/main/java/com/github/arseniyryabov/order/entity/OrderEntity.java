@@ -1,5 +1,6 @@
 package com.github.arseniyryabov.order.entity;
 
+import com.github.arseniyryabov.order.enums.OrderStatus;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -34,8 +35,9 @@ public class OrderEntity {
     @Column(name = "delivery_method", nullable = false)
     private String deliveryMethod;
 
-    @Column(nullable = false)
-    private String status;
+    @Enumerated(EnumType.STRING)  // Сохраняем как строку в БД
+    @Column(name = "status", nullable = false)
+    private OrderStatus status;
 
     @Column(name = "total_amount", nullable = false)
     private BigDecimal totalAmount;
